@@ -23,8 +23,8 @@
   defaultBranch = main
 
 [user]
-  name = Parham Alvani
-  email = parham.alvani@gmail.com
+  name = P Alvani
+  email = alvanip271@gmail.com
 
 [fetch]
   parallel = 0
