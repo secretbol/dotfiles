@@ -35,6 +35,12 @@ Two entry points exist and they do different things:
 `scripts/lib/` is **vendored from an upstream repository**
 ([1995parham/dotfiles.lib](https://github.com/1995parham/dotfiles.lib)) via `git subtree`.
 Prefer fixing library bugs upstream; local edits there have to survive the next subtree merge.
+
+To change the library: commit and push in a clone of the upstream repository, then bring it here
+with `git subtree pull --prefix scripts/lib git@github.com:1995parham/dotfiles.lib main --squash`.
+Push that merge with a plain `git push`. Do **not** run `git pull --rebase` while the subtree merge
+is unpushed: a rebase replays the squashed commit without its prefix and stops with a conflict
+(`git rebase --abort` gets out of it). If the remote has new commits, `git pull --no-rebase` first.
 This is also why CI excludes `scripts/lib/` and `start.sh` from the shell linter.
 
 ## Directory Structure
@@ -51,6 +57,7 @@ scripts/
 │   ├── service.sh         # Cross-platform service management
 │   ├── proxy.sh           # Proxy configuration
 │   ├── whereami.sh        # Public IP / country detection (with cache)
+│   ├── claude.sh          # Names of Claude Code's per-project directories
 │   ├── run.sh             # Command execution utilities
 │   ├── start.sh           # Main script execution engine
 │   ├── header.sh          # ASCII art header
@@ -289,7 +296,7 @@ not_require_pacman <packages...>
 # Example: not_require_pacman package-to-remove
 
 require_aur <packages...>
-# Install AUR packages via yay
+# Install AUR packages via yay (yay -S, never -Sy: no partial sync)
 # Respects allow_no_aur flag
 # Auto-upgrades -git packages
 # Example: require_aur yay neovim-git
@@ -298,8 +305,17 @@ require_aur <packages...>
 #### APT (Debian/Ubuntu)
 ```bash
 require_apt <packages...>
-# Install apt packages
+# Install apt packages (apt-get, skips what dpkg already has)
 # Example: require_apt build-essential
+
+require_apt_repo <name> <key_url> <uri> <suite> [components...]
+# Add a third-party apt repository signed with its own key, then apt-get update
+# - Key goes to /etc/apt/keyrings/<name>.gpg (an armored key is dearmored)
+# - Entry goes to /etc/apt/sources.list.d/<name>.list with signed-by
+# - Does nothing when the key and the same entry are already there
+# components defaults to "main"
+# Example: require_apt_repo hashicorp https://apt.releases.hashicorp.com/gpg \
+#              https://apt.releases.hashicorp.com "$(lsb_release -cs)"
 ```
 
 #### Other Package Managers
@@ -458,6 +474,18 @@ service_stop <service_name> [service_manager]
 service_restart <service_name> [service_manager]
 # Restart a service
 # Example: service_restart "docker"
+
+service_enable [--user] [--no-start] <service_name> [service_manager]
+# Enable a service at boot (or at login) and start it now
+# A system service runs through sudo; --user never does
+# --no-start: enable only, for a unit that starts with a session that does not run yet
+# Example: service_enable "docker.service"
+# Example: service_enable --user "mpd.service"
+# Example: service_enable --user --no-start "swayidle.service"
+
+# service_start, service_stop and service_restart take --user too:
+# a systemd user unit (systemctl --user) or a launchd agent in gui/<uid>
+# Example: service_restart --user "mpd.service"
 
 service_manager_name [service_manager]
 # Get human-readable service manager name
@@ -656,7 +684,9 @@ runner, which discovers every function named `test_*` via `declare -F` and repor
 ./scripts/lib/tests/test_linker.sh   # run one test file (30 tests, exits non-zero on failure)
 ```
 
-These tests are **not** wired into CI — run them by hand after touching `scripts/lib/`.
+These tests are **not** wired into the CI of this repository — run them by hand after touching
+`scripts/lib/`. The upstream repository runs them, and lints the library with the same
+`quote-safe-variables` check (set in its `.shellcheckrc`).
 `test_colors.sh` is a color-palette demo rather than a real test file (it defines no `test_*`
 functions, so it reports "All 0 tests passed").
 
@@ -667,13 +697,13 @@ assert_retval <command...> <expected-exit-code>
 ```
 
 CI (`.github/workflows/`):
-- `sh-lint.yaml` — `luizm/action-sh-checker` (shellcheck with `SHELLCHECK_OPTS: -x`, plus
+- `sh-lint.yaml` — `luizm/action-sh-checker` (shellcheck with `SHELLCHECK_OPTS: -x -o quote-safe-variables`, plus
   shfmt), excluding `scripts/lib/` and `start.sh`; and `stylua --check .` for Lua files.
 - `install.yaml` — runs `./start.sh -y env` and `./install.sh -y` on ubuntu-latest and
   macos-latest, then verifies symlinks and that the required binaries are on `PATH`.
 
 Style: 4-space indent everywhere (`.editorconfig`), `#!/usr/bin/env bash` shebang, and code
-must be shellcheck-clean with `-x` since scripts rely on sourced library files.
+must be shellcheck-clean with `-x -o quote-safe-variables` since scripts rely on sourced library files.
 
 ## Host-Specific Scripts
 

@@ -20,23 +20,11 @@ main_pacman() {
 
     # the weekly metadata refresh; lvfs (cdn.fwupd.org) is foreign, so in iran
     # it only works through a tunnel (sb-roam on simorgh)
-    sudo systemctl enable --now fwupd-refresh.timer
-}
-
-main_xbps() {
-    return 1
+    service_enable fwupd-refresh.timer
 }
 
 main_apt() {
     require_apt fwupd
-}
-
-main_pkg() {
-    return 1
-}
-
-main_brew() {
-    return 1
 }
 
 main() {

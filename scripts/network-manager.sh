@@ -28,23 +28,7 @@ main_pacman() {
     printf '[main]\nsystemd-resolved=false' | sudo tee '/etc/NetworkManager/conf.d/no-systemd-resolved.conf'
 
     sudo systemctl restart NetworkManager
-    sudo systemctl enable --now systemd-resolved.service
-}
-
-main_xbps() {
-    return 1
-}
-
-main_apt() {
-    return 1
-}
-
-main_pkg() {
-    return 1
-}
-
-main_brew() {
-    return 1
+    service_enable systemd-resolved.service
 }
 
 main() {

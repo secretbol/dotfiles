@@ -121,7 +121,7 @@ _whereami_clean_score() {
     [ -n "$addr" ] || return 0
 
     cache="/tmp/whereami.score.${addr}"
-    if [ -f "$cache" ] && [ $(($(date +%s) - $(date -r "$cache" +%s))) -lt $ttl ]; then
+    if [ -f "$cache" ] && [ $(($(date +%s) - $(date -r "$cache" +%s))) -lt "$ttl" ]; then
         cat "$cache"
         return 0
     fi
@@ -151,11 +151,11 @@ _whereami_relative_time() {
     now=$(date +%s)
     local diff=$((now - timestamp))
 
-    if [ $diff -lt 60 ]; then
+    if [ "${diff}" -lt 60 ]; then
         echo "now"
-    elif [ $diff -lt 3600 ]; then
+    elif [ "${diff}" -lt 3600 ]; then
         echo "$((diff / 60))m ago"
-    elif [ $diff -lt 86400 ]; then
+    elif [ "${diff}" -lt 86400 ]; then
         echo "$((diff / 3600))h ago"
     else
         echo "$((diff / 86400))d ago"
